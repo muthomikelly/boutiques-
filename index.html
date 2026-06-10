@@ -1,0 +1,105 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Shop</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <link href="https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,700;1,400&family=Inter:wght@400;500;600;700&display=swap" rel="stylesheet" />
+</head>
+<body>
+
+  <!-- ── Navbar ── -->
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ GtecnoBoutique</a>
+    <div class="nav-right">
+      <input id="searchInput" type="search" placeholder="Search products…" autocomplete="off" />
+      <a href="/about.html" class="btn-outline btn-sm" style="color:#fff;border-color:rgba(255,255,255,.3);">About Us</a>
+      <div class="cart-btn-wrap">
+        <button id="cartBtn" class="btn-icon cart-icon" aria-label="Open cart">🛒</button>
+        <span id="cartCount" class="cart-badge">0</span>
+      </div>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <a id="navAdminLink"  href="/admin/dashboard.html" class="btn-secondary btn-sm hidden">Admin</a>
+      <a id="navOrdersLink" href="/orders.html"          class="btn-secondary btn-sm hidden">My Orders</a>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+      <a id="navLoginLink"  href="/login.html"           class="btn-primary btn-sm">Login</a>
+    </div>
+  </nav>
+
+  <!-- ── Category nav ── -->
+  <div class="cat-nav">
+    <button class="cat-nav-btn active" data-cat="">🏠 All</button>
+    <button class="cat-nav-btn" data-cat="Women">👗 Women</button>
+    <button class="cat-nav-btn" data-cat="Men">👔 Men</button>
+    <button class="cat-nav-btn" data-cat="Kids">🧒 Kids</button>
+    <button class="cat-nav-btn" data-cat="Cosmetics">💄 Cosmetics</button>
+  </div>
+
+  <!-- ── Hero ── -->
+  <section class="hero" id="heroSection">
+    <div class="hero-content">
+      <h1 id="heroTitle" style="font-family:'Playfair Display',serif;">New Season,<br/><em style="font-style:italic;color:#f9a8d4;">New Style.</em></h1>
+      <p id="heroSub">Discover our latest collection of premium fashion pieces curated just for you.</p>
+      <a href="#shop" class="btn-primary btn-lg">Shop Now</a>
+    </div>
+  </section>
+
+  <!-- ── Shop section ── -->
+  <section id="shop" class="shop-section">
+    <div class="container">
+      <div class="shop-toolbar">
+        <h2 class="section-title" id="sectionTitle">All Products</h2>
+        <div class="toolbar-right">
+          <select id="sortFilter" class="filter-select">
+            <option value="">Sort: Default</option>
+            <option value="price-asc">Price: Low → High</option>
+            <option value="price-desc">Price: High → Low</option>
+            <option value="name-asc">Name: A → Z</option>
+          </select>
+        </div>
+      </div>
+
+      <div id="productGrid" class="product-grid"></div>
+      <p id="emptyMsg" class="empty-msg hidden">
+        <span style="font-size:3rem">🔍</span><br/>No products found.
+      </p>
+    </div>
+  </section>
+
+  <!-- ── Cart sidebar ── -->
+  <aside id="cartSidebar" class="cart-sidebar" aria-label="Shopping cart">
+    <div class="cart-header">
+      <h2>🛒 Your Cart</h2>
+      <button id="closeCart" class="close-btn" aria-label="Close cart">✕</button>
+    </div>
+    <div id="cartItems" class="cart-body"></div>
+    <div class="cart-footer">
+      <div class="cart-total-row">
+        <span>Total</span>
+        <strong id="cartTotal">KES 0</strong>
+      </div>
+      <button id="checkoutBtn" class="btn-primary btn-full">Checkout →</button>
+      <button id="closeCartBottom" class="btn-outline btn-full">Continue Shopping</button>
+    </div>
+  </aside>
+  <div id="cartOverlay" class="overlay"></div>
+
+  <!-- ── Footer ── -->
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="brand">🛍️ GtecnoBoutique</span>
+      <span>© 2026 GtecnoBoutique. All rights reserved.</span>
+      <div class="footer-links">
+        <a href="/about.html">About Us</a>
+        <a href="/orders.html" id="footerOrdersLink" class="hidden">My Orders</a>
+        <a href="/login.html"  id="footerLoginLink">Login</a>
+      </div>
+    </div>
+  </footer>
+
+  <script src="/js/cart.js"></script>
+  <script src="/js/shop.js"></script>
+  <script src="/js/chat.js"></script>
+</body>
+</html>

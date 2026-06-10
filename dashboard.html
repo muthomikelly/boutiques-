@@ -1,0 +1,106 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Admin Dashboard</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ GtecnoBoutique</a>
+    <div class="nav-right">
+      <a href="/index.html" class="btn-outline btn-sm">← View Shop</a>
+      <a href="/admin/products.html" class="btn-secondary btn-sm">Products</a>
+      <a href="/admin/orders.html" class="btn-secondary btn-sm">Orders</a>
+      <a href="/admin/chat.html" class="btn-secondary btn-sm">💬 Chat</a>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Admin Dashboard</h1>
+      <span class="admin-badge">Admin Panel</span>
+    </div>
+
+    <div class="stats-grid">
+      <div class="stat-card">
+        <div class="stat-icon">📦</div>
+        <h3>Total Products</h3>
+        <p id="statProducts">—</p>
+        <a href="/admin/products.html" class="stat-link">Manage →</a>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">🛒</div>
+        <h3>Total Orders</h3>
+        <p id="statOrders">—</p>
+        <a href="/admin/orders.html" class="stat-link">View all →</a>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">💰</div>
+        <h3>Revenue (KES)</h3>
+        <p id="statRevenue">—</p>
+      </div>
+      <div class="stat-card">
+        <div class="stat-icon">⏳</div>
+        <h3>Pending Orders</h3>
+        <p id="statPending">—</p>
+        <a href="/admin/orders.html" class="stat-link">Review →</a>
+      </div>
+    </div>
+
+    <div class="admin-quick-links">
+      <h2>Quick Actions</h2>
+      <div class="quick-links-grid">
+        <a href="/admin/products.html" class="quick-link-card">
+          <span>➕</span>
+          <strong>Add Product</strong>
+          <small>Add new items to your shop</small>
+        </a>
+        <a href="/admin/orders.html" class="quick-link-card">
+          <span>📋</span>
+          <strong>Manage Orders</strong>
+          <small>Update order statuses</small>
+        </a>
+        <a href="/index.html" class="quick-link-card">
+          <span>🛍️</span>
+          <strong>View Shop</strong>
+          <small>See what customers see</small>
+        </a>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="brand">🛍️ GtecnoBoutique</span>
+      <span>© 2025 GtecnoBoutique Admin Panel</span>
+    </div>
+  </footer>
+
+  <script src="/js/nav.js"></script>
+  <script>
+    (async () => {
+      const me = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json());
+      if (!me.user || me.user.role !== 'admin') return (location.href = '/login.html');
+
+      const [products, orders] = await Promise.all([
+        fetch('/api/products', { credentials: 'include' }).then(r => r.json()),
+        fetch('/api/orders',   { credentials: 'include' }).then(r => r.json()),
+      ]);
+
+      const allOrders = orders.orders || [];
+      document.getElementById('statProducts').textContent = products.products?.length ?? 0;
+      document.getElementById('statOrders').textContent   = allOrders.length;
+      document.getElementById('statPending').textContent  = allOrders.filter(o => o.status === 'pending').length;
+
+      const revenue = allOrders
+        .filter(o => o.status === 'paid' || o.status === 'delivered')
+        .reduce((sum, o) => sum + o.total, 0);
+      document.getElementById('statRevenue').textContent = 'KES ' + Math.ceil(revenue * 130).toLocaleString();
+    })();
+  </script>
+</body>
+</html>

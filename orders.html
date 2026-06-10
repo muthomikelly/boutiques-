@@ -1,0 +1,148 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Manage Orders</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ GtecnoBoutique</a>
+    <div class="nav-right">
+      <a href="/admin/dashboard.html" class="btn-outline btn-sm">← Dashboard</a>
+      <a href="/admin/products.html" class="btn-secondary btn-sm">Products</a>
+      <a href="/index.html" class="btn-secondary btn-sm">View Shop</a>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Orders</h1>
+      <div class="order-filter-wrap">
+        <select id="statusFilter" class="filter-select">
+          <option value="">All Statuses</option>
+          <option value="pending">Pending</option>
+          <option value="paid">Paid</option>
+          <option value="processing">Processing</option>
+          <option value="shipped">Shipped</option>
+          <option value="delivered">Delivered</option>
+          <option value="cancelled">Cancelled</option>
+        </select>
+      </div>
+    </div>
+
+    <div id="emptyState" class="empty-state hidden">
+      <div class="empty-state-icon">🛒</div>
+      <h3>No orders yet</h3>
+      <p>Orders will appear here once customers start purchasing.</p>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table" id="ordersTable">
+        <thead>
+          <tr>
+            <th>#</th>
+            <th>Customer</th>
+            <th>Items</th>
+            <th>Total (KES)</th>
+            <th>Status</th>
+            <th>Date</th>
+            <th>Update</th>
+          </tr>
+        </thead>
+        <tbody id="ordersBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="brand">🛍️ GtecnoBoutique</span>
+      <span>© 2025 GtecnoBoutiqueSS Admin Panel</span>
+    </div>
+  </footer>
+
+  <script src="/js/nav.js"></script>
+  <script>
+    const STATUSES = ['pending','paid','processing','shipped','delivered','cancelled'];
+    let allOrders = [];
+
+    async function guardAdmin() {
+      const me = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json());
+      if (!me.user || me.user.role !== 'admin') return (location.href = '/login.html');
+    }
+
+    async function loadOrders() {
+      const data = await fetch('/api/orders', { credentials: 'include' }).then(r => r.json());
+      allOrders  = data.orders || [];
+      renderOrders(allOrders);
+    }
+
+    function renderOrders(orders) {
+      const tbody = document.getElementById('ordersBody');
+      tbody.innerHTML = '';
+
+      if (!orders.length) {
+        document.getElementById('emptyState').classList.remove('hidden');
+        document.getElementById('ordersTable').classList.add('hidden');
+        return;
+      }
+      document.getElementById('emptyState').classList.add('hidden');
+      document.getElementById('ordersTable').classList.remove('hidden');
+
+      orders.forEach(o => {
+        const options = STATUSES.map(s =>
+          `<option value="${s}" ${s === o.status ? 'selected' : ''}>${s}</option>`
+        ).join('');
+        const totalKES = Math.ceil(o.total * 130).toLocaleString();
+        const itemsSummary = o.items
+          .map(i => `${i.name} x${i.quantity}${i.size ? ` <span class="order-size-tag">Size: ${i.size}</span>` : ''}${i.color ? ` <span class="order-color-tag">Color: ${i.color}</span>` : ''}`)
+          .join('<br/>');
+
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td><strong>#${o.id}</strong></td>
+          <td>
+            <strong>${o.customer_name}</strong><br/>
+            <small style="color:#666;">${o.customer_email}</small>
+          </td>
+          <td><small>${itemsSummary}</small></td>
+          <td><strong>KES ${totalKES}</strong></td>
+          <td><span class="status-badge status-${o.status}">${o.status}</span></td>
+          <td>${new Date(o.created_at * 1000).toLocaleDateString('en-KE', {day:'numeric',month:'short',year:'numeric'})}</td>
+          <td class="action-btns">
+            <select class="filter-select status-select" style="font-size:.8rem;padding:.3rem .5rem;">${options}</select>
+            <button class="btn-sm btn-primary" onclick="updateStatus(${o.id}, this)">Save</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    document.getElementById('statusFilter').addEventListener('change', function() {
+      const val = this.value;
+      renderOrders(val ? allOrders.filter(o => o.status === val) : allOrders);
+    });
+
+    async function updateStatus(id, btn) {
+      const select = btn.previousElementSibling;
+      const status = select.value;
+      btn.disabled = true;
+      btn.textContent = '…';
+      const res = await fetch(`/api/orders/${id}/status`, {
+        method:  'PATCH',
+        headers: { 'Content-Type': 'application/json' },
+        body:    JSON.stringify({ status }),
+        credentials: 'include',
+      }).then(r => r.json());
+      if (res.error) { alert(res.error); btn.disabled = false; btn.textContent = 'Save'; }
+      else loadOrders();
+    }
+
+    guardAdmin().then(loadOrders);
+  </script>
+</body>
+</html>

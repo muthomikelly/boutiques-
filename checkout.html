@@ -1,0 +1,118 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Checkout</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ GtecnoBoutique</a>
+    <div class="nav-right">
+      <a href="/index.html" class="btn-outline btn-sm">← Back to Shop</a>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+      <a id="navLoginLink" href="/login.html" class="btn-primary btn-sm hidden">Login</a>
+    </div>
+  </nav>
+
+  <main class="container checkout-page">
+    <div class="breadcrumb">
+      <a href="/index.html">Shop</a>
+      <span>›</span>
+      <a href="javascript:history.back()">Cart</a>
+      <span>›</span>
+      <span>Checkout</span>
+    </div>
+
+    <h1>Checkout</h1>
+
+    <div class="checkout-grid">
+      <!-- Left -->
+      <div class="checkout-left">
+        <div class="checkout-section">
+          <h2>📦 Order Summary</h2>
+          <div id="summaryItems"></div>
+          <div class="summary-total">
+            <span>Total</span>
+            <strong id="summaryTotal">KES 0</strong>
+          </div>
+        </div>
+
+        <div class="checkout-section">
+          <h2>🏠 Shipping Address</h2>
+          <textarea id="shippingAddress" rows="3"
+            placeholder="Street address, City, Country…"></textarea>
+        </div>
+      </div>
+
+      <!-- Right: M-Pesa -->
+      <div class="checkout-right">
+        <div class="checkout-section mpesa-card">
+          <div class="mpesa-header">
+            <img src="https://upload.wikimedia.org/wikipedia/commons/thumb/1/15/M-PESA_LOGO-01.svg/320px-M-PESA_LOGO-01.svg.png"
+                 alt="M-Pesa" class="mpesa-logo" />
+            <p>Pay securely with M-Pesa</p>
+          </div>
+
+          <div class="form-group">
+            <label for="mpesaPhone">M-Pesa Phone Number</label>
+            <div class="phone-input-wrap">
+              <span class="phone-prefix">🇰🇪 +254</span>
+              <input type="tel" id="mpesaPhone" placeholder="7XX XXX XXX"
+                     maxlength="10" autocomplete="tel" />
+            </div>
+            <small class="input-hint">e.g. 0712345678 or 0115 345 678</small>
+          </div>
+
+          <div id="payError" class="alert alert-error hidden"></div>
+
+          <button id="payBtn" class="btn-mpesa btn-full">
+            <span id="payBtnText">Pay with M-Pesa</span>
+          </button>
+
+          <div id="stkPending" class="stk-pending hidden">
+            <div class="stk-spinner"></div>
+            <p><strong>Check your phone!</strong></p>
+            <p class="stk-sub">An M-Pesa prompt has been sent.<br/>Enter your PIN to complete payment.</p>
+            <div class="stk-timer"><span id="timerCount">60</span>s remaining</div>
+            <button id="cancelWait" class="btn-outline btn-sm" style="margin-top:.75rem;">Cancel</button>
+          </div>
+
+          <div id="paySuccess" class="pay-success hidden">
+            <div class="success-icon">✅</div>
+            <h3>Payment Confirmed!</h3>
+            <p>Your order has been placed successfully.</p>
+            <a href="/orders.html" class="btn-primary btn-full" style="margin-top:1rem;">View My Orders</a>
+            <a href="/index.html" class="btn-outline btn-full" style="margin-top:.5rem;">Continue Shopping</a>
+          </div>
+        </div>
+
+        <div class="mpesa-info">
+          <h4>How M-Pesa payment works</h4>
+          <ol>
+            <li>Enter your M-Pesa registered phone number</li>
+            <li>Click "Pay with M-Pesa"</li>
+            <li>A prompt will appear on your phone</li>
+            <li>Enter your M-Pesa PIN to confirm</li>
+          </ol>
+          <p class="mpesa-test-note">
+          </p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="brand">🛍️ GtecnoBoutique</span>
+      <span>© 2025 GtecnoBoutique. All rights reserved.</span>
+    </div>
+  </footer>
+
+  <script src="/js/cart.js"></script>
+  <script src="/js/nav.js"></script>
+  <script src="/js/checkout.js"></script>
+</body>
+</html>

@@ -1,0 +1,314 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Manage Products</title>
+  <link rel="stylesheet" href="/css/style.css" />
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ Boutique</a>
+    <div class="nav-right">
+      <a href="/admin/dashboard.html" class="btn-outline btn-sm">← Dashboard</a>
+      <a href="/admin/orders.html" class="btn-secondary btn-sm">Orders</a>
+      <a href="/index.html" class="btn-secondary btn-sm">View Shop</a>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+    </div>
+  </nav>
+
+  <main class="container">
+    <div class="page-header">
+      <h1>Products</h1>
+      <button id="addProductBtn" class="btn-primary">+ Add Product</button>
+    </div>
+
+    <div id="noProducts" class="empty-state hidden">
+      <div class="empty-state-icon">📦</div>
+      <h3>No products yet</h3>
+      <p>Add your first product to start selling.</p>
+      <button onclick="document.getElementById('addProductBtn').click()" class="btn-primary" style="margin-top:1rem;">Add Product</button>
+    </div>
+
+    <div class="table-wrap">
+      <table class="admin-table" id="productsTable">
+        <thead>
+          <tr>
+            <th>Image</th>
+            <th>Name</th>
+            <th>Category</th>
+            <th>Type</th>
+            <th>Sizes</th>
+            <th>Colors</th>
+            <th>Price (KES)</th>
+            <th>Stock</th>
+            <th>Actions</th>
+          </tr>
+        </thead>
+        <tbody id="productsBody"></tbody>
+      </table>
+    </div>
+  </main>
+
+  <!-- Product modal -->
+  <div id="productModal" class="modal" role="dialog" aria-modal="true" aria-labelledby="modalTitle">
+    <h2 id="modalTitle">Add Product</h2>
+    <form id="productForm">
+      <label>Name *<input type="text" id="pName" required placeholder="e.g. Classic White Tee" /></label>
+      <label>Description<textarea id="pDesc" rows="3" placeholder="Describe the product…"></textarea></label>
+      <label>Price (USD) *<input type="number" id="pPrice" step="0.01" min="0" required placeholder="e.g. 29.99" /></label>
+      <label>Stock<input type="number" id="pStock" min="0" value="0" /></label>
+      <label>Category<input type="text" id="pCategory" placeholder="e.g. Women, Men, Kids, Cosmetics" /></label>
+      <label>Item Type<input type="text" id="pType" placeholder="e.g. Dress, Shirt, Shoes, Bag, Lipstick" /></label>
+      <label>
+        Sizes (comma-separated)
+        <input type="text" id="pSizes" placeholder="e.g. XS, S, M, L, XL or 36, 38, 40" />
+        <div class="admin-size-presets" aria-label="Common sizes">
+          <button type="button" class="size-preset" data-size="XS">XS</button>
+          <button type="button" class="size-preset" data-size="S">S</button>
+          <button type="button" class="size-preset" data-size="M">M</button>
+          <button type="button" class="size-preset" data-size="L">L</button>
+          <button type="button" class="size-preset" data-size="XL">XL</button>
+          <button type="button" class="size-preset" data-size="XXL">XXL</button>
+          <button type="button" class="size-preset" data-size="36">36</button>
+          <button type="button" class="size-preset" data-size="38">38</button>
+          <button type="button" class="size-preset" data-size="40">40</button>
+          <button type="button" class="size-preset" data-size="42">42</button>
+        </div>
+        <small style="color:#6b7280;font-size:.75rem;margin-top:.2rem;display:block;">Choose common sizes above or type custom sizes. Leave empty for bags, cosmetics and one-size items.</small>
+      </label>
+      <label>
+        Colors (comma-separated)
+        <input type="text" id="pColors" placeholder="e.g. Black, White, Red, Navy" />
+        <div class="admin-color-presets" aria-label="Common colors">
+          <button type="button" class="color-preset" data-color="Black">Black</button>
+          <button type="button" class="color-preset" data-color="White">White</button>
+          <button type="button" class="color-preset" data-color="Red">Red</button>
+          <button type="button" class="color-preset" data-color="Blue">Blue</button>
+          <button type="button" class="color-preset" data-color="Navy">Navy</button>
+          <button type="button" class="color-preset" data-color="Green">Green</button>
+          <button type="button" class="color-preset" data-color="Pink">Pink</button>
+          <button type="button" class="color-preset" data-color="Brown">Brown</button>
+          <button type="button" class="color-preset" data-color="Gold">Gold</button>
+          <button type="button" class="color-preset" data-color="Silver">Silver</button>
+        </div>
+        <small style="color:#6b7280;font-size:.75rem;margin-top:.2rem;display:block;">Choose common colors above or type custom colors. Leave empty when color is not needed.</small>
+      </label>
+      <label>Product Image<input type="file" id="pImage" accept="image/*" /></label>
+      <div id="currentImage" style="margin:.5rem 0;"></div>
+      <div class="modal-actions">
+        <button type="submit" class="btn-primary">Save Product</button>
+        <button type="button" id="cancelModal" class="btn-outline">Cancel</button>
+      </div>
+      <div id="formError" class="alert alert-error hidden" style="margin-top:.75rem;"></div>
+    </form>
+  </div>
+  <div id="modalOverlay" class="overlay"></div>
+
+  <footer class="footer">
+    <div class="container footer-inner">
+      <span class="brand">🛍️ GtecnoBoutique</span>
+      <span>© 2026 GtecnoBoutique Admin Panel</span>
+    </div>
+  </footer>
+
+  <script src="/js/nav.js"></script>
+  <script>
+    let editingId = null;
+
+    async function guardAdmin() {
+      const me = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json());
+      if (!me.user || me.user.role !== 'admin') return (location.href = '/login.html');
+    }
+
+    async function loadProducts() {
+      const data  = await fetch('/api/products', { credentials: 'include' }).then(r => r.json());
+      const tbody = document.getElementById('productsBody');
+      tbody.innerHTML = '';
+      const products = data.products || [];
+
+      if (!products.length) {
+        document.getElementById('noProducts').classList.remove('hidden');
+        document.getElementById('productsTable').classList.add('hidden');
+        return;
+      }
+      document.getElementById('noProducts').classList.add('hidden');
+      document.getElementById('productsTable').classList.remove('hidden');
+
+      products.forEach(p => {
+        const tr = document.createElement('tr');
+        tr.innerHTML = `
+          <td>${p.image_url ? `<img src="${p.image_url}" alt="${p.name}" class="thumb" />` : '<span class="no-thumb">No image</span>'}</td>
+          <td><strong>${p.name}</strong></td>
+          <td>${p.category || '—'}</td>
+          <td>${p.item_type ? `<span class="type-pill">${p.item_type}</span>` : '—'}</td>
+          <td>${p.sizes ? p.sizes.split(',').map(s=>`<span class="size-pill">${s.trim()}</span>`).join('') : '—'}</td>
+          <td>${p.colors ? p.colors.split(',').map(c=>`<span class="color-pill">${c.trim()}</span>`).join('') : '—'}</td>
+          <td>KES ${Math.ceil(p.price * 130).toLocaleString()}</td>
+          <td><span class="${p.stock === 0 ? 'stock-out' : p.stock < 5 ? 'stock-low' : 'stock-ok'}">${p.stock}</span></td>
+          <td class="action-btns">
+            <button class="btn-sm btn-secondary" onclick="openEdit(${p.id})">✏️ Edit</button>
+            <button class="btn-sm btn-danger"    onclick="deleteProduct(${p.id}, '${p.name.replace(/'/g,"\\'")}')">🗑 Delete</button>
+          </td>
+        `;
+        tbody.appendChild(tr);
+      });
+    }
+
+    function openModal(title) {
+      document.getElementById('modalTitle').textContent = title;
+      document.getElementById('productModal').classList.add('open');
+      document.getElementById('modalOverlay').classList.add('open');
+      document.getElementById('formError').classList.add('hidden');
+      document.body.style.overflow = 'hidden';
+    }
+
+    function closeModal() {
+      document.getElementById('productModal').classList.remove('open');
+      document.getElementById('modalOverlay').classList.remove('open');
+      document.getElementById('productForm').reset();
+      document.getElementById('currentImage').innerHTML = '';
+      syncSizePresets();
+      syncColorPresets();
+      document.body.style.overflow = '';
+      editingId = null;
+    }
+
+    document.getElementById('addProductBtn').addEventListener('click', () => {
+      editingId = null;
+      syncSizePresets();
+      syncColorPresets();
+      openModal('Add Product');
+    });
+    document.getElementById('cancelModal').addEventListener('click', closeModal);
+    document.getElementById('modalOverlay').addEventListener('click', closeModal);
+
+    function getSizeList() {
+      return document.getElementById('pSizes').value
+        .split(',')
+        .map(s => s.trim())
+        .filter(Boolean);
+    }
+
+    function setSizeList(sizes) {
+      document.getElementById('pSizes').value = [...new Set(sizes)].join(', ');
+      syncSizePresets();
+    }
+
+    function syncSizePresets() {
+      const selected = new Set(getSizeList().map(s => s.toLowerCase()));
+      document.querySelectorAll('.size-preset').forEach(btn => {
+        btn.classList.toggle('active', selected.has(btn.dataset.size.toLowerCase()));
+      });
+    }
+
+    document.getElementById('pSizes').addEventListener('input', syncSizePresets);
+    document.querySelectorAll('.size-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const size = btn.dataset.size;
+        const sizes = getSizeList();
+        const exists = sizes.some(s => s.toLowerCase() === size.toLowerCase());
+        setSizeList(exists ? sizes.filter(s => s.toLowerCase() !== size.toLowerCase()) : [...sizes, size]);
+      });
+    });
+
+    function getColorList() {
+      return document.getElementById('pColors').value
+        .split(',')
+        .map(c => c.trim())
+        .filter(Boolean);
+    }
+
+    function setColorList(colors) {
+      const seen = new Set();
+      const unique = [];
+      colors.forEach(color => {
+        const key = color.toLowerCase();
+        if (!seen.has(key)) {
+          seen.add(key);
+          unique.push(color);
+        }
+      });
+      document.getElementById('pColors').value = unique.join(', ');
+      syncColorPresets();
+    }
+
+    function syncColorPresets() {
+      const selected = new Set(getColorList().map(c => c.toLowerCase()));
+      document.querySelectorAll('.color-preset').forEach(btn => {
+        btn.classList.toggle('active', selected.has(btn.dataset.color.toLowerCase()));
+      });
+    }
+
+    document.getElementById('pColors').addEventListener('input', syncColorPresets);
+    document.querySelectorAll('.color-preset').forEach(btn => {
+      btn.addEventListener('click', () => {
+        const color = btn.dataset.color;
+        const colors = getColorList();
+        const exists = colors.some(c => c.toLowerCase() === color.toLowerCase());
+        setColorList(exists ? colors.filter(c => c.toLowerCase() !== color.toLowerCase()) : [...colors, color]);
+      });
+    });
+
+    async function openEdit(id) {
+      const data = await fetch(`/api/products/${id}`, { credentials: 'include' }).then(r => r.json());
+      const p = data.product;
+      editingId = id;
+      document.getElementById('pName').value     = p.name;
+      document.getElementById('pDesc').value     = p.description || '';
+      document.getElementById('pPrice').value    = p.price;
+      document.getElementById('pStock').value    = p.stock;
+      document.getElementById('pCategory').value = p.category || '';
+      document.getElementById('pType').value     = p.item_type || '';
+      document.getElementById('pSizes').value    = p.sizes    || '';
+      document.getElementById('pColors').value   = p.colors   || '';
+      syncSizePresets();
+      syncColorPresets();
+      if (p.image_url) {
+        document.getElementById('currentImage').innerHTML =
+          `<p style="font-size:.8rem;color:#666;margin-bottom:.3rem;">Current image:</p>
+           <img src="${p.image_url}" class="thumb" alt="current" />`;
+      }
+      openModal('Edit Product');
+    }
+
+    document.getElementById('productForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const fd = new FormData();
+      fd.append('name',        document.getElementById('pName').value);
+      fd.append('description', document.getElementById('pDesc').value);
+      fd.append('price',       document.getElementById('pPrice').value);
+      fd.append('stock',       document.getElementById('pStock').value);
+      fd.append('category',    document.getElementById('pCategory').value);
+      fd.append('item_type',   document.getElementById('pType').value);
+      fd.append('sizes',       getSizeList().join(', '));
+      fd.append('colors',      getColorList().join(', '));
+      const img = document.getElementById('pImage').files[0];
+      if (img) fd.append('image', img);
+
+      const url    = editingId ? `/api/products/${editingId}` : '/api/products';
+      const method = editingId ? 'PUT' : 'POST';
+
+      const res = await fetch(url, { method, body: fd, credentials: 'include' }).then(r => r.json());
+      if (res.error) {
+        const el = document.getElementById('formError');
+        el.textContent = res.error;
+        el.classList.remove('hidden');
+      } else {
+        closeModal();
+        loadProducts();
+      }
+    });
+
+    async function deleteProduct(id, name) {
+      if (!confirm(`Delete "${name}"? This cannot be undone.`)) return;
+      const res = await fetch(`/api/products/${id}`, { method: 'DELETE', credentials: 'include' }).then(r => r.json());
+      if (res.error) alert(res.error);
+      else loadProducts();
+    }
+
+    guardAdmin().then(loadProducts);
+  </script>
+</body>
+</html>

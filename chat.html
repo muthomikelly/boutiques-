@@ -1,0 +1,250 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Boutique — Admin Chat</title>
+  <link rel="stylesheet" href="/css/style.css" />
+  <style>
+    .admin-chat-wrap {
+      display: grid; grid-template-columns: 280px 1fr;
+      height: calc(100vh - 64px); overflow: hidden;
+    }
+    /* Sidebar: customer list */
+    .chat-sidebar {
+      background: #fff; border-right: 1px solid #e2e2e8;
+      display: flex; flex-direction: column; overflow: hidden;
+    }
+    .chat-sidebar-header {
+      padding: 1.25rem 1rem; border-bottom: 1px solid #e2e2e8;
+      font-weight: 700; font-size: .95rem;
+      display: flex; align-items: center; justify-content: space-between;
+    }
+    .online-dot { width: 8px; height: 8px; border-radius: 50%; background: #16a34a; display: inline-block; margin-right: .4rem; }
+    .customer-list { flex: 1; overflow-y: auto; }
+    .customer-item {
+      padding: .85rem 1rem; cursor: pointer; border-bottom: 1px solid #f0f0f5;
+      display: flex; align-items: center; gap: .75rem;
+      transition: background .15s;
+    }
+    .customer-item:hover, .customer-item.active { background: #fdf2f8; }
+    .customer-avatar {
+      width: 38px; height: 38px; border-radius: 50%;
+      background: linear-gradient(135deg, #e94560, #c73652);
+      color: #fff; display: flex; align-items: center; justify-content: center;
+      font-weight: 700; font-size: .9rem; flex-shrink: 0;
+    }
+    .customer-info { flex: 1; min-width: 0; }
+    .customer-name { font-weight: 600; font-size: .875rem; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .customer-preview { font-size: .75rem; color: #6b7280; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+    .customer-badge { background: #e94560; color: #fff; border-radius: 50%; width: 18px; height: 18px; font-size: .65rem; font-weight: 700; display: flex; align-items: center; justify-content: center; flex-shrink: 0; }
+
+    /* Main chat area */
+    .chat-main {
+      display: flex; flex-direction: column; background: #f4f4f8;
+    }
+    .chat-main-header {
+      background: #fff; padding: 1rem 1.5rem;
+      border-bottom: 1px solid #e2e2e8;
+      display: flex; align-items: center; gap: .75rem;
+    }
+    .chat-main-header h3 { font-size: 1rem; font-weight: 700; }
+    .chat-main-header small { color: #6b7280; font-size: .8rem; }
+
+    .chat-main-messages {
+      flex: 1; overflow-y: auto; padding: 1.5rem;
+      display: flex; flex-direction: column; gap: .75rem;
+    }
+    .no-chat-selected {
+      flex: 1; display: flex; flex-direction: column;
+      align-items: center; justify-content: center;
+      color: #9ca3af; text-align: center; gap: .75rem;
+    }
+    .no-chat-selected span { font-size: 3rem; }
+
+    .chat-main-input {
+      background: #fff; padding: 1rem 1.5rem;
+      border-top: 1px solid #e2e2e8;
+      display: flex; gap: .75rem;
+    }
+    .chat-main-input input {
+      flex: 1; padding: .65rem 1rem; border: 1.5px solid #e2e2e8;
+      border-radius: 24px; font-size: .9rem; outline: none;
+      transition: border-color .15s;
+    }
+    .chat-main-input input:focus { border-color: #e94560; }
+    .chat-main-input button {
+      background: #e94560; color: #fff; border: none;
+      border-radius: 50%; width: 40px; height: 40px;
+      cursor: pointer; font-size: 1rem; flex-shrink: 0;
+      transition: background .15s;
+    }
+    .chat-main-input button:hover { background: #c73652; }
+  </style>
+</head>
+<body>
+  <nav class="navbar">
+    <a href="/index.html" class="brand">🛍️ GtecnoBoutique</a>
+    <div class="nav-right">
+      <a href="/admin/dashboard.html" class="btn-outline btn-sm">← Dashboard</a>
+      <a href="/admin/products.html"  class="btn-secondary btn-sm">Products</a>
+      <a href="/admin/orders.html"    class="btn-secondary btn-sm">Orders</a>
+      <span id="navGreeting" class="user-greeting hidden"></span>
+      <button id="navLogoutBtn" class="btn-outline btn-sm hidden">Logout</button>
+    </div>
+  </nav>
+
+  <div class="admin-chat-wrap">
+    <!-- Sidebar -->
+    <div class="chat-sidebar">
+      <div class="chat-sidebar-header">
+        <span>💬 Conversations</span>
+        <span id="onlineCount" style="font-size:.78rem;color:#16a34a;font-weight:600;">0 online</span>
+      </div>
+      <div class="customer-list" id="customerList">
+        <div style="padding:2rem;text-align:center;color:#9ca3af;font-size:.85rem;">
+          No conversations yet.<br/>Customers will appear here when they message.
+        </div>
+      </div>
+    </div>
+
+    <!-- Main chat -->
+    <div class="chat-main">
+      <div id="noChatSelected" class="no-chat-selected">
+        <span>💬</span>
+        <strong>Select a conversation</strong>
+        <p style="font-size:.85rem;">Choose a customer from the left to start chatting.</p>
+      </div>
+
+      <div id="chatArea" style="display:none;flex:1;flex-direction:column;overflow:hidden;">
+        <div class="chat-main-header">
+          <div class="customer-avatar" id="activeAvatar">?</div>
+          <div>
+            <h3 id="activeName">Customer</h3>
+            <small id="activeEmail"></small>
+          </div>
+        </div>
+        <div class="chat-main-messages" id="adminMessages"></div>
+        <div class="chat-main-input">
+          <input type="text" id="adminInput" placeholder="Type a reply…" autocomplete="off" />
+          <button id="adminSend">➤</button>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="/js/nav.js"></script>
+  <script>
+    let ws = null;
+    let allMessages = [];
+    let activeCustomerId = null;
+    const customers = new Map(); // id → { name, messages[] }
+
+    async function init() {
+      const me = await fetch('/api/auth/me', { credentials: 'include' }).then(r => r.json());
+      if (!me.user || me.user.role !== 'admin') return (location.href = '/login.html');
+
+      const { token } = await fetch('/api/auth/chat-token', { credentials: 'include' }).then(r => r.json());
+      const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+      ws = new WebSocket(`${proto}://${location.host}/ws/chat?token=${token}`);
+
+      ws.onmessage = (e) => {
+        const data = JSON.parse(e.data);
+        if (data.type === 'history') {
+          data.messages.forEach(m => processMessage(m));
+          renderCustomerList();
+          if (activeCustomerId) renderMessages(activeCustomerId);
+        } else if (data.type === 'message') {
+          processMessage(data);
+          renderCustomerList();
+          if (activeCustomerId) renderMessages(activeCustomerId);
+        }
+      };
+    }
+
+    function processMessage(msg) {
+      const senderId   = msg.senderId   || msg.sender_id;
+      const senderName = msg.senderName || msg.sender_name;
+      const senderRole = msg.senderRole || msg.sender_role;
+
+      // Group by customer (non-admin sender)
+      const custId = senderRole === 'admin' ? null : senderId;
+      if (!custId) return; // admin-only messages tracked differently
+
+      if (!customers.has(custId)) {
+        customers.set(custId, { id: custId, name: senderName, messages: [] });
+      }
+      customers.get(custId).messages.push(msg);
+    }
+
+    function renderCustomerList() {
+      const list = document.getElementById('customerList');
+      if (!customers.size) return;
+      list.innerHTML = '';
+      for (const [id, cust] of customers) {
+        const last = cust.messages[cust.messages.length - 1];
+        const lastText = last?.text || '';
+        const div = document.createElement('div');
+        div.className = 'customer-item' + (id === activeCustomerId ? ' active' : '');
+        div.innerHTML = `
+          <div class="customer-avatar">${cust.name[0].toUpperCase()}</div>
+          <div class="customer-info">
+            <div class="customer-name">${cust.name}</div>
+            <div class="customer-preview">${lastText.slice(0, 40)}</div>
+          </div>
+        `;
+        div.addEventListener('click', () => selectCustomer(id));
+        list.appendChild(div);
+      }
+    }
+
+    function selectCustomer(id) {
+      activeCustomerId = id;
+      const cust = customers.get(id);
+      document.getElementById('noChatSelected').style.display = 'none';
+      const area = document.getElementById('chatArea');
+      area.style.display = 'flex';
+      document.getElementById('activeAvatar').textContent = cust.name[0].toUpperCase();
+      document.getElementById('activeName').textContent   = cust.name;
+      renderMessages(id);
+      renderCustomerList();
+      document.getElementById('adminInput').focus();
+    }
+
+    function renderMessages(custId) {
+      const cust = customers.get(custId);
+      if (!cust) return;
+      const container = document.getElementById('adminMessages');
+      container.innerHTML = '';
+      cust.messages.forEach(msg => {
+        const senderRole = msg.senderRole || msg.sender_role;
+        const isMine = senderRole === 'admin';
+        const text   = msg.text;
+        const time   = new Date((msg.createdAt || msg.created_at * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+        const div = document.createElement('div');
+        div.className = `chat-msg ${isMine ? 'mine' : 'theirs'}`;
+        div.innerHTML = `
+          <div class="msg-bubble">${text}</div>
+          <div class="msg-time">${time}</div>
+        `;
+        container.appendChild(div);
+      });
+      container.scrollTop = container.scrollHeight;
+    }
+
+    function sendAdminMessage() {
+      const text = document.getElementById('adminInput').value.trim();
+      if (!text || !ws || ws.readyState !== 1) return;
+      ws.send(JSON.stringify({ type: 'message', text }));
+      document.getElementById('adminInput').value = '';
+    }
+
+    document.getElementById('adminSend').addEventListener('click', sendAdminMessage);
+    document.getElementById('adminInput').addEventListener('keydown', e => {
+      if (e.key === 'Enter') sendAdminMessage();
+    });
+
+    init();
+  </script>
+</body>
+</html>

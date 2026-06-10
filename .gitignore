@@ -1,0 +1,16 @@
+node_modules/
+
+.env
+backend/.env
+
+data/*.db
+data/*.db-*
+data/*.log
+backend/data/
+uploads/
+
+.netlify/
+.vscode/
+.kiro/
+npm-debug.log*
+*.log

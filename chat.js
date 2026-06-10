@@ -1,112 +1,155 @@
-const { WebSocketServer } = require('ws');
-const jwt = require('jsonwebtoken');
-const { getDb } = require('./db/init');
+/**
+ * chat.js — floating live chat widget for customers
+ * Include on any page where chat should appear.
+ * Requires the user to be logged in (reads token via /api/auth/me).
+ */
+(async function initChat() {
+  // Only show chat if logged in
+  const meRes = await fetch('/api/auth/me', { credentials: 'include' });
+  if (!meRes.ok) return;
+  const { user } = await meRes.json();
+  if (!user) return;
 
-const JWT_SECRET = process.env.JWT_SECRET || 'dev_secret_change_me';
+  // Get JWT token from cookie (we need it for WS auth)
+  // We'll request a short-lived chat token from the server
+  const tokenRes = await fetch('/api/auth/chat-token', { credentials: 'include' });
+  if (!tokenRes.ok) return;
+  const { token } = await tokenRes.json();
 
-// In-memory store: userId → ws connection
-const connections = new Map();
+  // ── Build widget HTML ──────────────────────────────────────────────────────
+  const widget = document.createElement('div');
+  widget.id = 'chatWidget';
+  widget.innerHTML = `
+    <button id="chatToggle" class="chat-toggle" aria-label="Open chat">
+      <span class="chat-toggle-icon">💬</span>
+      <span id="chatUnread" class="chat-unread hidden">0</span>
+    </button>
+    <div id="chatBox" class="chat-box hidden">
+      <div class="chat-box-header">
+        <div class="chat-header-info">
+          <div class="chat-avatar">🛍️</div>
+          <div>
+            <strong>Boutique Support</strong>
+            <span class="chat-status" id="chatStatus">Connecting…</span>
+          </div>
+        </div>
+        <button id="chatClose" class="chat-close-btn">✕</button>
+      </div>
+      <div id="chatMessages" class="chat-messages">
+        <div class="chat-welcome">
+          <p>👋 Hi <strong>${user.name.split(' ')[0]}</strong>! How can we help you today?</p>
+        </div>
+      </div>
+      <div class="chat-input-row">
+        <input id="chatInput" type="text" placeholder="Type a message…" autocomplete="off" />
+        <button id="chatSend" class="chat-send-btn">➤</button>
+      </div>
+    </div>
+  `;
+  document.body.appendChild(widget);
 
-function setupChat(server) {
-  const wss = new WebSocketServer({ server, path: '/ws/chat' });
+  // ── State ──────────────────────────────────────────────────────────────────
+  let ws        = null;
+  let isOpen    = false;
+  let unread    = 0;
 
-  wss.on('connection', (ws, req) => {
-    // Parse token from query string: /ws/chat?token=xxx
-    const url    = new URL(req.url, 'http://localhost');
-    const token  = url.searchParams.get('token');
-    let user     = null;
+  const toggle   = document.getElementById('chatToggle');
+  const box      = document.getElementById('chatBox');
+  const messages = document.getElementById('chatMessages');
+  const input    = document.getElementById('chatInput');
+  const sendBtn  = document.getElementById('chatSend');
+  const closeBtn = document.getElementById('chatClose');
+  const statusEl = document.getElementById('chatStatus');
+  const unreadEl = document.getElementById('chatUnread');
 
-    try {
-      user = jwt.verify(token, JWT_SECRET);
-    } catch {
-      ws.close(4001, 'Unauthorized');
-      return;
-    }
+  // ── WebSocket ──────────────────────────────────────────────────────────────
+  function connect() {
+    const proto = location.protocol === 'https:' ? 'wss' : 'ws';
+    ws = new WebSocket(`${proto}://${location.host}/ws/chat?token=${token}`);
 
-    ws.userId   = user.id;
-    ws.userName = user.name;
-    ws.userRole = user.role;
-    connections.set(user.id, ws);
+    ws.onopen = () => {
+      statusEl.textContent = 'Online';
+      statusEl.style.color = '#16a34a';
+    };
 
-    console.log(`[chat] ${user.name} (${user.role}) connected`);
+    ws.onclose = () => {
+      statusEl.textContent = 'Offline';
+      statusEl.style.color = '#dc2626';
+      // Reconnect after 3s
+      setTimeout(connect, 3000);
+    };
 
-    // Send recent chat history to this user
-    sendHistory(ws, user);
-
-    ws.on('message', (raw) => {
-      try {
-        const msg = JSON.parse(raw.toString());
-        if (msg.type === 'message' && msg.text?.trim()) {
-          saveAndBroadcast(user, msg.text.trim());
+    ws.onmessage = (e) => {
+      const data = JSON.parse(e.data);
+      if (data.type === 'history') {
+        data.messages.forEach(m => appendMessage(m, false));
+        scrollToBottom();
+      } else if (data.type === 'message') {
+        appendMessage(data, true);
+        if (!isOpen && data.senderId !== user.id) {
+          unread++;
+          unreadEl.textContent = unread;
+          unreadEl.classList.remove('hidden');
         }
-      } catch {}
-    });
+      }
+    };
+  }
 
-    ws.on('close', () => {
-      connections.delete(user.id);
-      console.log(`[chat] ${user.name} disconnected`);
-    });
+  connect();
+
+  // ── Render message ─────────────────────────────────────────────────────────
+  function appendMessage(msg, animate) {
+    const isMine = msg.senderId === user.id || msg.sender_id === user.id;
+    const name   = msg.senderName || msg.sender_name;
+    const role   = msg.senderRole || msg.sender_role;
+    const text   = msg.text;
+    const time   = new Date((msg.createdAt || msg.created_at * 1000)).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
+
+    const div = document.createElement('div');
+    div.className = `chat-msg ${isMine ? 'mine' : 'theirs'} ${animate ? 'animate' : ''}`;
+    div.innerHTML = `
+      ${!isMine ? `<div class="msg-sender">${role === 'admin' ? '🛍️ Boutique' : name}</div>` : ''}
+      <div class="msg-bubble">${escapeHtml(text)}</div>
+      <div class="msg-time">${time}</div>
+    `;
+    messages.appendChild(div);
+    if (animate) scrollToBottom();
+  }
+
+  function scrollToBottom() {
+    messages.scrollTop = messages.scrollHeight;
+  }
+
+  function escapeHtml(str) {
+    return str.replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
+  }
+
+  // ── Send message ───────────────────────────────────────────────────────────
+  function sendMessage() {
+    const text = input.value.trim();
+    if (!text || !ws || ws.readyState !== WebSocket.OPEN) return;
+    ws.send(JSON.stringify({ type: 'message', text }));
+    input.value = '';
+    input.focus();
+  }
+
+  sendBtn.addEventListener('click', sendMessage);
+  input.addEventListener('keydown', e => { if (e.key === 'Enter') sendMessage(); });
+
+  // ── Toggle open/close ──────────────────────────────────────────────────────
+  toggle.addEventListener('click', () => {
+    isOpen = !isOpen;
+    box.classList.toggle('hidden', !isOpen);
+    if (isOpen) {
+      unread = 0;
+      unreadEl.classList.add('hidden');
+      scrollToBottom();
+      input.focus();
+    }
   });
 
-  console.log('[chat] WebSocket server ready at /ws/chat');
-}
-
-function saveAndBroadcast(sender, text) {
-  const db = getDb();
-
-  // Save to DB
-  const result = db.prepare(
-    `INSERT INTO chat_messages (sender_id, sender_name, sender_role, text)
-     VALUES (?, ?, ?, ?)`
-  ).run(sender.id, sender.name, sender.role, text);
-
-  const message = {
-    type:        'message',
-    id:          result.lastInsertRowid,
-    senderId:    sender.id,
-    senderName:  sender.name,
-    senderRole:  sender.role,
-    text,
-    createdAt:   Date.now(),
-  };
-
-  const payload = JSON.stringify(message);
-
-  if (sender.role === 'admin') {
-    // Admin message → broadcast to ALL connected customers
-    for (const [, ws] of connections) {
-      if (ws.readyState === 1) ws.send(payload);
-    }
-  } else {
-    // Customer message → send to self + all admins
-    const senderWs = connections.get(sender.id);
-    if (senderWs?.readyState === 1) senderWs.send(payload);
-
-    for (const [, ws] of connections) {
-      if (ws.userRole === 'admin' && ws.readyState === 1) ws.send(payload);
-    }
-  }
-}
-
-function sendHistory(ws, user) {
-  const db = getDb();
-  let messages;
-
-  if (user.role === 'admin') {
-    // Admin sees all messages
-    messages = db.prepare(
-      `SELECT * FROM chat_messages ORDER BY created_at DESC LIMIT 100`
-    ).all().reverse();
-  } else {
-    // Customer sees their own messages + admin replies
-    messages = db.prepare(
-      `SELECT * FROM chat_messages
-       WHERE sender_id = ? OR sender_role = 'admin'
-       ORDER BY created_at ASC LIMIT 100`
-    ).all(user.id);
-  }
-
-  ws.send(JSON.stringify({ type: 'history', messages }));
-}
-
-module.exports = { setupChat };
+  closeBtn.addEventListener('click', () => {
+    isOpen = false;
+    box.classList.add('hidden');
+  });
+})();
